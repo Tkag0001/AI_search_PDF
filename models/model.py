@@ -16,15 +16,15 @@ Sử dụng thông tin sau đây để trả lời câu hỏi. Nếu bạn khôn
 {context}<|im_end|>
 <|im_start|>user
 {question}<|im_end|>
-<|im_start|>assistant
+<|im_start|>assistant<|im_end|>
 """
 def load_model(model_file = model_file_path, gpu_layers = 0):
     if not torch.cuda.is_available():
         gpu_layers = 0
     config = {
-        'max_new_tokens': 512, 
+        'max_new_tokens': 1024, 
         'repetition_penalty': 1.1, 
-        'context_length': 4000,  
+        'context_length': 6000,  
         'temperature':0.01, 
         'gpu_layers':gpu_layers}
 
@@ -67,19 +67,3 @@ class Model:
     def answer(self, question):
         response = self.llm_chain.invoke({'query': question})
         return response
-    # def answer(self, question):
-    #     response = self.llm_chain.invoke({'query': question})
-    #     return self.post_process_response(response['result'])
-
-    # def post_process_response(self, response):
-    #     stop_sequences = ['user', 'assistant']
-    #     for stop_sequence in stop_sequences:
-    #         response = response.split(stop_sequence)[0]
-    #     return response.strip()
-
-# question = "Tác giả đã đưa ra điều gì?"
-# model = Model("../database/vector_stores/test_text")
-#
-# start_time = time.time()
-# print(model.answer(question))
-# print("End time %ss"%(time.time()-start_time))
