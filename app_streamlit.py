@@ -1,6 +1,7 @@
 import time
 import os
 import logging
+import shutil
 from database import vector_db
 from models import model
 import streamlit as st
@@ -12,6 +13,9 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 # Initialize logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Set up the folder vector database path
+db_path = os.path.abspath("./database/vector_stores")
+
 # Initialize session state for the response queue and other variables
 if 'queue' not in st.session_state:
     st.session_state.queue = ""
@@ -19,15 +23,18 @@ if 'gpu_layers' not in st.session_state:
     st.session_state.gpu_layers = 0
 if 'database' not in st.session_state:
     st.session_state.database = ""
-if 'model_instance' not in st.session_state:
-    st.session_state.model_instance = model.Model(os.path.join(db_path, vector_dbs[0]), 0)
 if 'faiss_index' not in st.session_state:
     st.session_state.faiss_index = None
 if 'vector_dbs' not in st.session_state:
-    st.session_state.vector_dbs = os.listdir(os.path.abspath("./database/vector_stores"))
+    st.session_state.vector_dbs = os.listdir(db_path)
+if 'model_instance' not in st.session_state:
+    st.session_state.model_instance = None
 
-# Set up the database path and model
-db_path = os.path.abspath("./database/vector_stores")
+#Initialize first model
+if len(st.session_state.vector_dbs)!=0:
+    st.session_state.model_instance = model.Model(os.path.join(db_path, st.session_state.vector_dbs[0]), 0)
+else:
+    st.sidebar.warning("Don't have any vector databases to init model!",  icon="⚠️")
 
 # Streamlit app layout
 st.write("# AI Search PDF Tool")
@@ -38,15 +45,17 @@ create_db = st.sidebar.button("Create database")
 selected_database = st.sidebar.selectbox("Database", st.session_state.vector_dbs)
 selected_gpu_layers = st.sidebar.number_input("GPU layers", 0, 50, value=0)
 adapted_model = st.sidebar.button("Update model")
+delete_db = st.sidebar.button("Delete database")
 
 # Function to handle answering the question
 def handle_answer(question):
     try:
         if question.strip() != "":
             st.session_state.queue += f"Question: {question}\n"
+            start_time = time.time()
             answer = st.session_state.model_instance.answer(question)
             answer = answer["result"]
-            logging.info(f"Answer received: {answer}")
+            logging.info(f"Answer received: {answer}\nTime: {time.time() - start_time}")
             st.session_state.queue += f"Answer: {answer}\n"
         st.experimental_rerun()
     except requests.exceptions.Timeout:
@@ -65,9 +74,14 @@ def get_model(database, gpu_layers):
 
 # Update model when "Update model" button is pressed
 if adapted_model:
-    st.session_state.model_instance = get_model(selected_database, selected_gpu_layers)
-    st.session_state.database = selected_database
-    st.session_state.gpu_layers = selected_gpu_layers
+    if selected_database == None:
+        st.sidebar.warning("Don't have any vector databases",  icon="⚠️")
+    elif not os.path.exists(os.path.join(db_path, selected_database)):
+        st.sidebar.warning("This vector database is not exist, you can reload to solve",  icon="⚠️")
+    else:
+        st.session_state.model_instance = get_model(selected_database, selected_gpu_layers)
+        st.session_state.database = selected_database
+        st.session_state.gpu_layers = selected_gpu_layers
 
 # Display response and question text areas
 response = st.text_area("Response", value=st.session_state.queue, height=300)
@@ -79,11 +93,29 @@ if st.button("Answer"):
     handle_answer(question)
 
 if create_db:
-    vector_db.create_db_from_uploaded_PDF(uploaded_files, vector_db_name)
-    vector_path = os.path.join(db_path, vector_db_name)
-    print(vector_path)
-    if os.path.exists(vector_path):
-        st.session_state.vector_dbs = os.listdir(db_path)
-        st.success(f"Vector database created and saved to {vector_path}")
+    if vector_db_name.strip() == "" or vector_db_name == None:
+        st.sidebar.warning('This vector database name is empty!', icon="⚠️")
+    elif len(uploaded_files) == 0:
+        st.sidebar.warning("Can't detect any PDF files to create!",  icon="⚠️")
     else:
-        st.error(f"Failed to create vector database from uploaded PDF files")
+        vector_db.create_db_from_uploaded_PDF(uploaded_files, vector_db_name)
+        vector_path = os.path.join(db_path, vector_db_name)
+        print(vector_path)
+        if os.path.exists(vector_path):
+            st.session_state.vector_dbs = os.listdir(db_path)
+            st.success(f"Vector database created and saved to {vector_path}")
+        else:
+            st.error(f"Failed to create vector database from uploaded PDF files")
+
+if delete_db:
+    if len(st.session_state.vector_dbs) == 0:
+        st.sidebar.warning("Don't have any databases to delete!")
+    else:
+        vector_path_to_delete = os.path.join(db_path, selected_database)
+        shutil.rmtree(vector_path_to_delete)
+        st.session_state.vector_dbs = os.listdir(db_path)
+        if not os.path.exists(vector_path_to_delete):
+            st.sidebar.success(f"Delete successful!")
+        else:
+            st.sidebar.error(f"Failed to delete")
+
