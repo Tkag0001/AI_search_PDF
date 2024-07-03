@@ -89,10 +89,10 @@ If succesful, you can see the notification
 ### On terminal
 If you look similar error, please reduce the number of GPU layers
 ```
-CUDA error 2 at D:\a\ctransformers\ctransformers\models\ggml\ggml-cuda.cu:6413: out of memory
+CUDA error 2 at D:\a\ctransformers\ctransformers\models\ggml\ggml-cuda.cu:6413: out of memory.
 ```
 ### On app
 
 ![alt text](./images/image-5.png)
 
-If you see the APP is break and the text "CONNECTING" in the upper right corner, please run app again and choose a smaller number  of GPU layers
+If you see the APP is break and the text "CONNECTING" in the upper right corner, please run app again and choose a smaller number  of GPU layers.
