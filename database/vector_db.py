@@ -8,6 +8,8 @@ import tempfile
 
 data_path = './database/file_stores'
 vector_db_path = './database/vector_stores'
+model_name = "all-MiniLM-L6-v2.gguf2.f16.gguf"
+gpt4all_kwargs = {'allow_download': 'True'}
 model_path = './models'
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=50)
@@ -23,7 +25,10 @@ def create_db_from_text(raw_text, name_vector):
     chunks = text_splitter.split_text(raw_text)
 
     # Embeddings
-    embedding_model = GPT4AllEmbeddings(model_path=model_path)
+    embedding_model = GPT4AllEmbeddings(
+        model_name=model_name,
+        gpt4all_kwargs=gpt4all_kwargs
+    )
 
     # Kiem tra name_vector ton tai chua
     i=-1
@@ -44,21 +49,24 @@ def create_db_from_text(raw_text, name_vector):
     return db
 
 def create_db_from_PDF(folder_path = data_path, name_vector = "vectorDB"):
-    # embedding_model = GPT4AllEmbeddings(model_path=model_path)
-    embedding_model = GPT4AllEmbeddings()
-    # model_name = "vinai/phobert-base-v2"
-    # model_kwargs = {'device': 'cuda'}
-    # encode_kwargs = {'normalize_embeddings': True}
-    # embedding_model = HuggingFaceEmbeddings(
-    #     model_name=model_name,
-    #     model_kwargs=model_kwargs,
-    #     encode_kwargs=encode_kwargs
-    # )
+    #Khoi tao embedding_model
+    embedding_model = GPT4AllEmbeddings(
+        model_name=model_name,
+        gpt4all_kwargs=gpt4all_kwargs
+    )
+    # embedding_model = GPT4AllEmbeddings(model_path = model_path)
+
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=50)
+
+    # Check 
+    if not os.path.exists(folder_path):
+        print("Failse: this link not exits")
+        return None
 
     # Load file PDF
     loader= DirectoryLoader(folder_path, glob="*.pdf", loader_cls=PyPDFLoader)
     documents = loader.load()
-    print(documents)
+
     if(len(documents)==0):
         pass
 
@@ -81,7 +89,13 @@ def create_db_from_PDF(folder_path = data_path, name_vector = "vectorDB"):
     return db
 
 def create_db_from_uploaded_PDF(uploaded_files, name_vector = "vectorDB"):
-    embedding_model = GPT4AllEmbeddings()
+    #Khoi tao embedding model
+    embedding_model = GPT4AllEmbeddings(
+        model_name=model_name,
+        gpt4all_kwargs=gpt4all_kwargs
+    )
+    # embedding_model = GPT4AllEmbeddings(model_path = model_path)
+
     documents = []
 
     for pdf_file in uploaded_files:
