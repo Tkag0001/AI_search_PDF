@@ -2,6 +2,8 @@ import time
 import os
 import logging
 import shutil
+import requests
+import torch
 from database import vector_db
 from models import model
 import streamlit as st
@@ -9,6 +11,7 @@ from database import vector_db
 
 # To avoid duplicate library errors
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+torch.cuda.empty_cache()
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -30,10 +33,8 @@ if 'vector_dbs' not in st.session_state:
 if 'model_instance' not in st.session_state:
     st.session_state.model_instance = None
 
-#Initialize first model
-if len(st.session_state.vector_dbs)!=0:
-    st.session_state.model_instance = model.Model(os.path.join(db_path, st.session_state.vector_dbs[0]), 0)
-else:
+#warning no database exist
+if len(os.listdir(db_path))==0:
     st.sidebar.warning("Don't have any vector databases to init model!",  icon="⚠️")
 
 # Streamlit app layout
@@ -43,7 +44,7 @@ uploaded_files = st.sidebar.file_uploader("Upload PDF files", type="pdf", accept
 vector_db_name = st.sidebar.text_input("Vector database name:")
 create_db = st.sidebar.button("Create database")
 selected_database = st.sidebar.selectbox("Database", st.session_state.vector_dbs)
-selected_gpu_layers = st.sidebar.number_input("GPU layers", 0, 50, value=0)
+selected_gpu_layers = st.sidebar.number_input("GPU layers (Select 0 if you don't have GPU)", 0, 50, value=0)
 adapted_model = st.sidebar.button("Update model")
 delete_db = st.sidebar.button("Delete database")
 
@@ -56,7 +57,7 @@ def handle_answer(question):
             answer = st.session_state.model_instance.answer(question)
             answer = answer["result"]
             logging.info(f"Answer received: {answer}\nTime: {time.time() - start_time}")
-            st.session_state.queue += f"Answer: {answer}\n"
+            st.session_state.queue += f"Answer: {answer}\nTime: {time.time() - start_time}"
         st.experimental_rerun()
     except requests.exceptions.Timeout:
         st.error("Request timed out. Please check your internet connection and try again.")
